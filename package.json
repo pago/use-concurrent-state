@@ -1,5 +1,5 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -30,10 +30,10 @@
     "trailingComma": "es5"
   },
   "size-limit": [
-       {
-       "path": "./dist/use-concurrent-state.esm.js"
-   }
- ],
+    {
+      "path": "./dist/use-concurrent-state.esm.js"
+    }
+  ],
   "name": "use-concurrent-state",
   "author": "Patrick Gotthardt <patrick@pagosoft.com>",
   "module": "dist/use-concurrent-state.esm.js",
