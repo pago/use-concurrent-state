@@ -1,0 +1,70 @@
+{
+  "version": "0.1.0",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "build": "node ./build.js",
+    "test": "jest --passWithNoTests",
+    "lint": "eslint ./src/**",
+    "prepare": "node ./build",
+    "docs": "yarn tsc && yarn docs:extract && yarn docs:generate",
+    "docs:extract": "api-extractor run --local",
+    "docs:generate": "api-documenter markdown -i ./temp -o ./docs/api"
+  },
+  "peerDependencies": {
+    "react": ">=16"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "name": "use-concurrent-state",
+  "author": "Patrick Gotthardt <patrick@pagosoft.com>",
+  "module": "dist/use-concurrent-state.esm.js",
+  "devDependencies": {
+    "@babel/core": "^7.13.10",
+    "@microsoft/api-documenter": "^7.12.14",
+    "@microsoft/api-extractor": "^7.13.2",
+    "@testing-library/react": "^11.2.5",
+    "@testing-library/react-hooks": "^5.1.0",
+    "@types/jest": "^26.0.22",
+    "@types/react": "^17.0.3",
+    "@types/react-dom": "^17.0.2",
+    "@typescript-eslint/eslint-plugin": "^4.19.0",
+    "@typescript-eslint/parser": "^4.19.0",
+    "babel-jest": "^26.6.3",
+    "esbuild": "^0.10.1",
+    "eslint": "^7.22.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-config-react-app": "^6.0.0",
+    "eslint-plugin-flowtype": "^5.4.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-jsx-a11y": "^6.4.1",
+    "eslint-plugin-react": "^7.23.1",
+    "eslint-plugin-react-hooks": "^4.2.0",
+    "husky": "^5.0.0",
+    "jest": "^26.6.3",
+    "prettier": "^2.2.1",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "react-test-renderer": "^17.0.1",
+    "ts-jest": "^26.5.4",
+    "tslib": "^2.1.0",
+    "typescript": "^4.2.3"
+  },
+  "dependencies": {
+    "@pago/use-reference": "^0.2.0",
+    "immer": "^9.0.1",
+    "use-immer": "^0.5.1"
+  }
+}
