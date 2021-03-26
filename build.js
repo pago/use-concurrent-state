@@ -10,6 +10,7 @@ const external = [
 const esmBuild = build({
   entryPoints: ['./src/index.ts'],
   format: 'esm',
+  target: 'es2018',
   bundle: true,
   outfile: './dist/use-concurrent-state.esm.js',
   sourcemap: true,
@@ -20,6 +21,7 @@ const esmBuild = build({
 const cjsBuild = build({
   entryPoints: ['./src/index.ts'],
   format: 'cjs',
+  target: 'es2018',
   bundle: true,
   outfile: './dist/index.js',
   sourcemap: true,
