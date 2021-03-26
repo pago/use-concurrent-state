@@ -1,6 +1,11 @@
 const { build } = require('esbuild');
 
-const external = ['use-immer', 'react'];
+const external = [
+  'use-immer',
+  'react',
+  '@pago/use-reference',
+  'is-generator-function',
+];
 
 const esmBuild = build({
   entryPoints: ['./src/index.ts'],

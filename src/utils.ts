@@ -62,13 +62,6 @@ export function hasTaskStrategy(
   );
 }
 
-export function isGeneratorFunction(
-  candidate: any
-): candidate is GeneratorFunction {
-  return candidate.constructor === gen.constructor;
-}
-function* gen() {}
-
 export function isPromise(candidate: any): candidate is Promise<any> {
   return candidate && typeof candidate.then === 'function';
 }

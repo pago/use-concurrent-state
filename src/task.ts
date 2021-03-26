@@ -1,9 +1,5 @@
-import {
-  isGeneratorFunction,
-  isPromise,
-  TaskGenerator,
-  isOperator,
-} from './utils';
+import isGeneratorFunction from 'is-generator-function';
+import { isPromise, TaskGenerator, isOperator } from './utils';
 
 export interface TaskEventNotifications<TResult, TReason> {
   onCancelled?: () => void;
