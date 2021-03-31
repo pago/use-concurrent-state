@@ -88,6 +88,13 @@ function useTaskMap() {
   const eventMap = useRef(new Map<TaskGen, Set<Handler>>());
   const taskMap = useRef(new Map<TaskGen, Task<any> | undefined>());
 
+  function notifyHandlers(sequence: TaskGen, t: Task<any>) {
+    const notifiers = eventMap.current.get(sequence);
+    if (notifiers) {
+      notifiers.forEach(apply(t));
+    }
+  }
+
   return useReference({
     start(sequence: TaskGen, t: Task<any>) {
       if (hasTaskStrategy(sequence)) {
@@ -95,19 +102,17 @@ function useTaskMap() {
         if (oldTask) {
           t = sequence.strategy.compose(oldTask, t);
         }
-        taskMap.current.set(sequence, t);
-        t.listen({
-          onFinished() {
-            if (taskMap.current.get(sequence) === t) {
-              taskMap.current.set(sequence, undefined);
-            }
-          },
-        });
       }
-      const notifiers = eventMap.current.get(sequence);
-      if (notifiers) {
-        notifiers.forEach(apply(t));
-      }
+      taskMap.current.set(sequence, t);
+      t.listen({
+        onFinished() {
+          if (taskMap.current.get(sequence) === t) {
+            taskMap.current.set(sequence, undefined);
+            notifyHandlers(sequence, {...t});
+          }
+        },
+      });
+      notifyHandlers(sequence, t);
     },
     addListener(sequence: TaskGen, handler: Handler) {
       if (!eventMap.current.has(sequence)) {

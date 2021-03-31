@@ -77,6 +77,38 @@ describe('useConcurrentState', () => {
     }
   });
 
+  it('executes an async task and renders it on state change', async () => {
+    let rendered = 0;
+    const { result, waitForNextUpdate } = renderHook(() => {
+      const [state, call, useTaskState] = useConcurrentState({
+        solution: 42,
+      });
+      rendered++;
+      return { state, call, task: useTaskState(asyncTask) };
+    });
+    expect(rendered).toEqual(1);
+    const d = defer();
+    act(() => {
+      result.current.call(asyncTask);
+    });
+    expect(result.current.task.isRunning).toBeTruthy();
+    expect(rendered).toEqual(2);
+
+    act(() => {
+      d.resolve('success');
+    });
+
+    await waitForNextUpdate();
+    expect(rendered).toEqual(3);
+    expect(result.current.task.result).toEqual('solved');
+    expect(result.current.task.isRunning).toBeFalsy();
+
+    function* asyncTask() {
+      yield d.signal;
+      return 'solved';
+    }
+  });
+
   it('executes an async task and cancels it on unmount', done => {
     const { result, unmount } = renderHook(() => {
       const [state, call, useTaskState] = useConcurrentState({
