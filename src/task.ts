@@ -12,9 +12,11 @@ export interface Task<TResult, TReason = any> {
   isRunning: boolean;
   isIdle: boolean;
   isCancelled: boolean;
+  isFinished: boolean;
   error?: TReason;
   result?: TResult;
-
+  run(events?: TaskEventNotifications<TResult, TReason>): void;
+  chain(f: (value?: TResult) => Task<any>): Task<any>;
   cancel(): void;
   listen(events: TaskEventNotifications<TResult, TReason>): void;
   toPromise(): Promise<TResult>;
@@ -36,53 +38,68 @@ export function isTask(candidate: any): candidate is Task<any> {
     typeof candidate.listen === 'function' &&
     typeof candidate.cancel === 'function' &&
     typeof candidate.isRunning === 'boolean' &&
+    typeof candidate.isFinished === 'boolean' &&
     // todo test if that works
     // typeof candidate.isIdle === 'boolean' &&
     typeof candidate.isCancelled === 'boolean'
   );
 }
 
-export const IdleTask: Task<any> = {
-  isRunning: false,
-  isCancelled: false,
-  isIdle: true,
-  cancel() {},
-  listen() {},
-  toPromise() {
-    return Promise.resolve();
-  },
-};
-
 export function task<TResult, TReason = any>(
   runner: TaskRunner<TResult, TReason>
 ): Task<TResult, TReason> {
-  const subscribers = new Set<TaskEventNotifications<TResult, TReason>>();
-  const task: Task<TResult, TReason> = {
-    isRunning: true,
+  const eventSubscribers: TaskEventNotifications<TResult, TReason>[] = [];
+  const cancelCallbacks: { (): void }[] = [];
+  const t: Task<TResult, TReason> = {
+    isRunning: false,
+    isFinished: false,
     isCancelled: false,
     result: undefined,
     error: undefined,
     get isIdle() {
-      return !task.isRunning;
+      return !t.isRunning;
+    },
+    chain(f) {
+      const chainedTask = task(({ resolve, onCancelled, reject }) => {
+        const cancelableTasks: Task<any>[] = [t];
+        onCancelled(() => cancelableTasks.forEach((t) => t.cancel()));
+        t.run({
+          onResolved(result) {
+            const nextTask = f(result);
+            cancelableTasks.push(nextTask);
+            nextTask.run({
+              onResolved: resolve,
+              onRejected: reject,
+            });
+          },
+        });
+      });
+      return chainedTask;
     },
     cancel() {
-      if (!task.isRunning) {
+      if (!t.isRunning || t.isFinished) {
         // todo: decide whether to swallow or throw
         return;
       }
-      task.isCancelled = true;
-      task.isRunning = false;
-      subscribers.forEach(function notifyCancellation(events) {
-        events.onCancelled?.();
-        events.onFinished?.();
+      t.isCancelled = true;
+      t.isFinished = true;
+      t.isRunning = false;
+      cancelCallbacks.forEach(function executeCallback(handler) {
+        handler();
       });
+      eventSubscribers.forEach(notify);
     },
     listen(events: TaskEventNotifications<TResult, TReason>) {
-      subscribers.add(events);
+      if (t.isFinished) {
+        // notify straight away
+        notify(events);
+      } else {
+        eventSubscribers.push(events);
+      }
     },
     toPromise() {
       return new Promise((resolve, reject) => {
-        task.listen({
+        t.listen({
           onResolved: resolve,
           onRejected: reject,
           onCancelled() {
@@ -92,37 +109,49 @@ export function task<TResult, TReason = any>(
         });
       });
     },
+    run(events) {
+      if (events) {
+        t.listen(events);
+      }
+      if (t.isFinished || t.isRunning) {
+        return;
+      }
+      t.isRunning = true;
+      runner({
+        resolve(result: TResult) {
+          if (!t.isRunning) {
+            // todo: decide whether to swallow or throw
+            return;
+          }
+          t.isFinished = true;
+          t.isRunning = false;
+          t.result = result;
+          eventSubscribers.forEach(notify);
+        },
+        reject(reason: TReason) {
+          if (!t.isRunning || t.isFinished) {
+            // todo: decide whether to swallow or throw
+            return;
+          }
+          t.isRunning = false;
+          t.isFinished = true;
+          t.error = reason;
+          eventSubscribers.forEach(notify);
+        },
+        onCancelled(handler: () => void) {
+          cancelCallbacks.push(handler);
+        },
+      });
+    },
   };
-  runner({
-    resolve(result: TResult) {
-      if (!task.isRunning) {
-        // todo: decide whether to swallow or throw
-        return;
-      }
-      task.isRunning = false;
-      task.result = result;
-      subscribers.forEach(function notifyResolved(events) {
-        events.onResolved?.(result);
-        events.onFinished?.();
-      });
-    },
-    reject(reason: TReason) {
-      if (!task.isRunning) {
-        // todo: decide whether to swallow or throw
-        return;
-      }
-      task.isRunning = false;
-      task.error = reason;
-      subscribers.forEach(function notifyResolved(events) {
-        events.onRejected?.(reason);
-        events.onFinished?.();
-      });
-    },
-    onCancelled(handler: () => void) {
-      task.listen({ onCancelled: handler });
-    },
-  });
-  return task;
+  function notify(event: TaskEventNotifications<TResult, TReason>) {
+    if (t.isCancelled) event.onCancelled?.();
+    if (t.error) event.onRejected?.(t.error);
+    if (t.isFinished && !t.isCancelled && !t.error)
+      event.onResolved?.(t.result!);
+    event.onFinished?.();
+  }
+  return t;
 }
 
 interface ExecutionContext<TState, TDependencies, TEvent> {
@@ -135,7 +164,12 @@ interface ExecutionContext<TState, TDependencies, TEvent> {
   ): Task<TResult>;
 }
 
-export function run<TState, TDependencies, TEvent = any, TResult = any>(
+export function fromSequence<
+  TState,
+  TDependencies,
+  TEvent = any,
+  TResult = any
+>(
   context: ExecutionContext<TState, TDependencies, TEvent>,
   sequence: TaskGenerator<TEvent, TState, TResult>,
   event?: TEvent
@@ -209,6 +243,14 @@ export function run<TState, TDependencies, TEvent = any, TResult = any>(
         interpretValue(subTask);
       } else if (typeof result === 'function') {
         consumeNextValue(context.setState(result));
+      } else if (isTask(result)) {
+        // todo figure out why result is of type `never`
+        const subtask = result as Task<any>;
+        onCancelled(subtask.cancel);
+        subtask.run({
+          onResolved: consumeNextValue,
+          onRejected: resumeAfterFailure,
+        });
       } else if (isOperator(result)) {
         // todo figure out why result is of type never
         // @ts-ignore
@@ -220,23 +262,6 @@ export function run<TState, TDependencies, TEvent = any, TResult = any>(
           interpret: interpretValue,
           next: consumeNextValue,
         });
-      } else if (isTask(result)) {
-        // todo figure out why result is of type `never`
-        const subtask = result as Task<any>;
-        if (!subtask.isRunning) {
-          if (subtask.error) {
-            resumeAfterFailure(subtask.error);
-          } else {
-            consumeNextValue(subtask.result);
-          }
-        } else {
-          subtask.listen({
-            onResolved: consumeNextValue,
-            onRejected: resumeAfterFailure,
-            // todo do we need to handle cancellation?
-          });
-          onCancelled(subtask.cancel);
-        }
       } else {
         // todo handle error
         throw new Error('use-concurrent-state/invalid-yieldable');
