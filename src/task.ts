@@ -16,7 +16,7 @@ export interface Task<TResult, TReason = any> {
   error?: TReason;
   result?: TResult;
   run(events?: TaskEventNotifications<TResult, TReason>): void;
-  chain(f: (value?: TResult) => Task<any>): Task<any>;
+  chain(factory: (value?: TResult) => Task<any>): Task<any>;
   cancel(): void;
   listen(events: TaskEventNotifications<TResult, TReason>): void;
   toPromise(): Promise<TResult>;
@@ -45,6 +45,10 @@ export function isTask(candidate: any): candidate is Task<any> {
   );
 }
 
+export function idleTask(): Task<any> {
+  return task(() => {});
+}
+
 export function task<TResult, TReason = any>(
   runner: TaskRunner<TResult, TReason>
 ): Task<TResult, TReason> {
@@ -59,25 +63,31 @@ export function task<TResult, TReason = any>(
     get isIdle() {
       return !t.isRunning;
     },
-    chain(f) {
+    chain(factory) {
       const chainedTask = task(({ resolve, onCancelled, reject }) => {
-        const cancelableTasks: Task<any>[] = [t];
+        const cancelableTasks: Task<unknown>[] = [t];
         onCancelled(() => cancelableTasks.forEach((t) => t.cancel()));
         t.run({
           onResolved(result) {
-            const nextTask = f(result);
+            const nextTask = factory(result);
             cancelableTasks.push(nextTask);
             nextTask.run({
               onResolved: resolve,
               onRejected: reject,
             });
           },
+          onCancelled() {
+            factory().cancel();
+          },
+          onRejected(error) {
+            reject(error);
+          }
         });
       });
       return chainedTask;
     },
     cancel() {
-      if (!t.isRunning || t.isFinished) {
+      if (t.isFinished) {
         // todo: decide whether to swallow or throw
         return;
       }
@@ -119,7 +129,7 @@ export function task<TResult, TReason = any>(
       t.isRunning = true;
       runner({
         resolve(result: TResult) {
-          if (!t.isRunning) {
+          if (!t.isRunning || t.isFinished) {
             // todo: decide whether to swallow or throw
             return;
           }

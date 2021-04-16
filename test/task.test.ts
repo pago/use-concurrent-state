@@ -1,4 +1,4 @@
-import { task, fromSequence } from '../src/task';
+import { task, fromSequence, idleTask } from '../src/task';
 import { call, getDependencies, getState } from '../src/operators';
 
 describe('Task', () => {
@@ -7,13 +7,14 @@ describe('Task', () => {
       resolve(42);
     });
     expect(t.isRunning).toBeFalsy();
+    expect(t.isIdle).toBeTruthy();
     expect(t.result).toBe(undefined);
     t.run();
     expect(t.result).toBe(42);
   });
 
   describe('chain', () => {
-    it('should chain tasks per dot operator', () => {
+    it('should chain tasks per dot operator', (done) => {
       const t = task<number, any>(({ resolve }) => {
         resolve(42);
       }).chain((x) =>
@@ -25,13 +26,18 @@ describe('Task', () => {
           })
         )
       );
-      t.run();
+      t.run({
+        onResolved(result) {
+          expect(result).toEqual(72);
+          done();
+        },
+      });
       expect(t.result).toEqual(72);
     });
 
     it('should chain by reference', () => {
-      const t = task<number, any>(({resolve}) => {
-        resolve(42)
+      const t = task<number, any>(({ resolve }) => {
+        resolve(42);
       });
 
       const t2 = t.chain((x) => {
@@ -45,18 +51,22 @@ describe('Task', () => {
           resolve(x + 10);
         });
       });
-      t3.run();
+      t3.run({
+        onResolved(result) {
+          expect(result).toEqual(62);
+        },
+      });
       expect(t.result).toEqual(42);
       expect(t2.result).toEqual(52);
       expect(t3.result).toEqual(62);
-    })
+    });
 
     it('should only execute each task once', () => {
       const tResolver = jest.fn();
       const t2Resolver = jest.fn();
       const t3Resolver = jest.fn();
-      const t = task<number, any>(({resolve}) => {
-        resolve(42)
+      const t = task<number, any>(({ resolve }) => {
+        resolve(42);
       });
 
       const t2 = t.chain((x) => {
@@ -72,22 +82,87 @@ describe('Task', () => {
       });
 
       t.run({
-        onFinished: tResolver
+        onFinished: tResolver,
       });
       t2.run({
-        onFinished: t2Resolver
+        onFinished: t2Resolver,
       });
       t3.run({
-        onFinished: t3Resolver
+        onFinished: t3Resolver,
       });
       expect(tResolver).toHaveBeenCalledTimes(1);
       expect(t2Resolver).toHaveBeenCalledTimes(1);
       expect(t3Resolver).toHaveBeenCalledTimes(1);
-    })
-  })
+    });
 
+    it('cancels all chained tasks', () => {
+      const tCancelHandler = jest.fn();
+      const t2CancelHandler = jest.fn();
+      const t3CancelHandler = jest.fn();
+      const runnerCancelHandler = jest.fn();
+      const resolver = jest.fn();
+      const onFinishHandler = jest.fn();
+      const t1 = idleTask();
+      const t2 = idleTask();
+      const t3 = idleTask();
+      const runnerTask = t1
+        .chain(() => t1)
+        .chain(() => t2)
+        .chain(() => t3);
 
-  describe('run', () => {
+      t1.listen({
+        onCancelled: tCancelHandler,
+        onResolved: resolver,
+        onFinished: onFinishHandler,
+      });
+      t2.listen({
+        onCancelled: t2CancelHandler,
+        onResolved: resolver,
+        onFinished: onFinishHandler,
+      });
+      t3.listen({
+        onCancelled: t3CancelHandler,
+        onResolved: resolver,
+        onFinished: onFinishHandler,
+      });
+      runnerTask.run({
+        onCancelled: runnerCancelHandler,
+        onFinished: onFinishHandler,
+        onResolved: resolver,
+      });
+      runnerTask.cancel();
+      expect(tCancelHandler).toHaveBeenCalledTimes(1);
+      expect(t2CancelHandler).toHaveBeenCalledTimes(1);
+      expect(t3CancelHandler).toHaveBeenCalledTimes(1);
+      expect(onFinishHandler).toHaveBeenCalledTimes(4);
+      expect(resolver).toHaveBeenCalledTimes(0);
+    });
+
+    it('should reject chain on rejection', () => {
+      const rejectionHandler = jest.fn();
+      const finishHandler = jest.fn();
+      const t = task<any>(({resolve}) => resolve(undefined));
+
+      t.listen({
+        onFinished: finishHandler, // should trigger
+        onRejected: rejectionHandler // should not trigger
+      });
+      t.chain(() =>
+        task<any>(({ reject }) => {
+          reject('manual rejection');
+        })
+      ).run({
+        onRejected: rejectionHandler, // should trigger
+        onFinished: finishHandler,  // should trigger
+      });
+
+      expect(rejectionHandler).toHaveBeenCalledWith('manual rejection');
+      expect(rejectionHandler).toHaveBeenCalledTimes(1);
+      expect(finishHandler).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('fromSequence', () => {
     let ctx: any;
     beforeEach(() => {
       ctx = {
