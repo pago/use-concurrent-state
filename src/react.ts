@@ -1,6 +1,6 @@
 import { useImmer } from 'use-immer';
 import { useLatestRef, useReference } from '@pago/use-reference';
-import { Task, fromSequence, task } from './task';
+import { Task, fromSequence, idleTask } from './task';
 import { apply, hasTaskStrategy, TaskGenerator } from './utils';
 import { useEffect, useRef, useState } from 'react';
 
@@ -13,7 +13,6 @@ export function useConcurrentState<TState, TDependencies extends object = any>(
   const stateRef = useLatestRef(state);
   const taskMap = useTaskMap();
   const taskList = useTaskList();
-  const idleTask = task(() => {});
   const { call, useTaskState } = useStableApi({
     call<TEvent, TResult>(
       sequence: TaskGenerator<TEvent, TState, TResult>,
@@ -41,7 +40,7 @@ export function useConcurrentState<TState, TDependencies extends object = any>(
     useTaskState<TEvent, TResult>(
       sequence: TaskGenerator<TEvent, TState, TResult>
     ) {
-      const [task, setTask] = useState(idleTask);
+      const [task, setTask] = useState(idleTask());
       taskMap.addListener(sequence, setTask);
       return task;
     },
@@ -97,8 +96,8 @@ function useTaskMap() {
 
   return useReference({
     start(sequence: TaskGen, t: Task<any>) {
+      const oldTask = taskMap.current.get(sequence);
       if (hasTaskStrategy(sequence)) {
-        const oldTask = taskMap.current.get(sequence);
         if (oldTask) {
           t = sequence.strategy.compose(oldTask, t);
         }
@@ -112,6 +111,7 @@ function useTaskMap() {
           }
         },
       });
+      t.run();
       notifyHandlers(sequence, t);
     },
     addListener(sequence: TaskGen, handler: Handler) {

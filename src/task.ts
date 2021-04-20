@@ -16,7 +16,7 @@ export interface Task<TResult, TReason = any> {
   error?: TReason;
   result?: TResult;
   run(events?: TaskEventNotifications<TResult, TReason>): void;
-  chain(factory: (value?: TResult) => Task<any>): Task<any>;
+  chain(lift: (value?: TResult) => Task<TResult>): Task<any>;
   cancel(): void;
   listen(events: TaskEventNotifications<TResult, TReason>): void;
   toPromise(): Promise<TResult>;
@@ -63,13 +63,13 @@ export function task<TResult, TReason = any>(
     get isIdle() {
       return !t.isRunning;
     },
-    chain(factory) {
+    chain(lift) {
       const chainedTask = task(({ resolve, onCancelled, reject }) => {
         const cancelableTasks: Task<unknown>[] = [t];
         onCancelled(() => cancelableTasks.forEach((t) => t.cancel()));
         t.run({
           onResolved(result) {
-            const nextTask = factory(result);
+            const nextTask = lift(result);
             cancelableTasks.push(nextTask);
             nextTask.run({
               onResolved: resolve,
@@ -77,7 +77,7 @@ export function task<TResult, TReason = any>(
             });
           },
           onCancelled() {
-            factory().cancel();
+            lift().cancel();
           },
           onRejected(error) {
             reject(error);
