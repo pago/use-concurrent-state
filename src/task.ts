@@ -66,7 +66,9 @@ export function task<TResult, TReason = any>(
     chain(lift) {
       const chainedTask = task(({ resolve, onCancelled, reject }) => {
         const cancelableTasks: Task<unknown>[] = [t];
-        onCancelled(() => cancelableTasks.forEach((t) => t.cancel()));
+        onCancelled(function cancelTasks() {
+          cancelableTasks.forEach((t) => t.cancel());
+        });
         t.run({
           onResolved(result) {
             const nextTask = lift(result);
@@ -81,7 +83,7 @@ export function task<TResult, TReason = any>(
           },
           onRejected(error) {
             reject(error);
-          }
+          },
         });
       });
       return chainedTask;
@@ -119,6 +121,9 @@ export function task<TResult, TReason = any>(
         });
       });
     },
+    /**
+     * @internal
+     */
     run(events: TaskEventNotifications<TResult, TReason>) {
       if (events) {
         t.listen(events);
