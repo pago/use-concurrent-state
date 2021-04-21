@@ -119,7 +119,7 @@ export function task<TResult, TReason = any>(
         });
       });
     },
-    run(events) {
+    run(events: TaskEventNotifications<TResult, TReason>) {
       if (events) {
         t.listen(events);
       }
