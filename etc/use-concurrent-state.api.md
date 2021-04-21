@@ -16,7 +16,7 @@ export function getDependencies<TDependencies>(): Operator<any, TDependencies>;
 export function getState<TState>(): Operator<TState, any>;
 
 // @public (undocumented)
-export const IdleTask: Task<any>;
+export function idleTask(): Task<any>;
 
 // @public (undocumented)
 export interface Operator<TState, TDependencies> {
@@ -44,19 +44,18 @@ export interface OperatorApi<TState, TDependencies> {
     task: Task<any>;
 }
 
-// Warning: (ae-forgotten-export) The symbol "ExecutionContext" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export function run<TState, TDependencies, TEvent = any, TResult = any>(context: ExecutionContext<TState, TDependencies, TEvent>, sequence: TaskGenerator<TEvent, TState, TResult>, event?: TEvent): Task<TResult>;
-
 // @public (undocumented)
 export interface Task<TResult, TReason = any> {
     // (undocumented)
     cancel(): void;
     // (undocumented)
+    chain(lift: (value?: TResult) => Task<TResult>): Task<any>;
+    // (undocumented)
     error?: TReason;
     // (undocumented)
     isCancelled: boolean;
+    // (undocumented)
+    isFinished: boolean;
     // (undocumented)
     isIdle: boolean;
     // (undocumented)
@@ -65,6 +64,8 @@ export interface Task<TResult, TReason = any> {
     listen(events: TaskEventNotifications<TResult, TReason>): void;
     // (undocumented)
     result?: TResult;
+    // (undocumented)
+    run(events?: TaskEventNotifications<TResult, TReason>): void;
     // (undocumented)
     toPromise(): Promise<TResult>;
 }
