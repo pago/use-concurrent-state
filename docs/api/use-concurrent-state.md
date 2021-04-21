@@ -11,7 +11,7 @@
 |  [call(task, event)](./use-concurrent-state.call.md) |  |
 |  [getDependencies()](./use-concurrent-state.getdependencies.md) |  |
 |  [getState()](./use-concurrent-state.getstate.md) |  |
-|  [run(context, sequence, event)](./use-concurrent-state.run.md) |  |
+|  [idleTask()](./use-concurrent-state.idletask.md) |  |
 |  [task(runner)](./use-concurrent-state.task.md) |  |
 |  [useConcurrentState(initialState, dependencies)](./use-concurrent-state.useconcurrentstate.md) |  |
 
@@ -25,10 +25,4 @@
 |  [TaskEventNotifications](./use-concurrent-state.taskeventnotifications.md) |  |
 |  [TaskResolver](./use-concurrent-state.taskresolver.md) |  |
 |  [TaskStrategy](./use-concurrent-state.taskstrategy.md) |  |
-
-## Variables
-
-|  Variable | Description |
-|  --- | --- |
-|  [IdleTask](./use-concurrent-state.idletask.md) |  |
 

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react-hooks';
 import { useConcurrentState } from '../src/react';
-import { Task } from '../src/task';
+import { switchStrategy } from '../src/strategies';
 
 describe('useConcurrentState', () => {
   it('returns the initial state', () => {
@@ -136,17 +136,13 @@ describe('useConcurrentState', () => {
     }
   });
 
-  it('executes an async task and uses its strategy', done => {
+  it('executes an async task and uses the switch strategy', done => {
     function* asyncTask() {
       yield d.signal;
       return 'solved';
     }
-    asyncTask.strategy = {
-      compose(oldTask: Task<string>, newTask: Task<string>) {
-        oldTask.cancel();
-        return newTask;
-      },
-    };
+
+    asyncTask.strategy = switchStrategy<string>();
 
     const { result } = renderHook(() => {
       const [state, call, useTaskState] = useConcurrentState({

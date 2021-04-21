@@ -16,6 +16,7 @@ export interface Task<TResult, TReason = any>
 |  --- | --- | --- |
 |  [error?](./use-concurrent-state.task.error.md) | TReason | <i>(Optional)</i> |
 |  [isCancelled](./use-concurrent-state.task.iscancelled.md) | boolean |  |
+|  [isFinished](./use-concurrent-state.task.isfinished.md) | boolean |  |
 |  [isIdle](./use-concurrent-state.task.isidle.md) | boolean |  |
 |  [isRunning](./use-concurrent-state.task.isrunning.md) | boolean |  |
 |  [result?](./use-concurrent-state.task.result.md) | TResult | <i>(Optional)</i> |
@@ -25,6 +26,7 @@ export interface Task<TResult, TReason = any>
 |  Method | Description |
 |  --- | --- |
 |  [cancel()](./use-concurrent-state.task.cancel.md) |  |
+|  [chain(lift)](./use-concurrent-state.task.chain.md) |  |
 |  [listen(events)](./use-concurrent-state.task.listen.md) |  |
 |  [toPromise()](./use-concurrent-state.task.topromise.md) |  |
 
