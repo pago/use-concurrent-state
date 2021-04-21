@@ -52,8 +52,8 @@ export function idleTask(): Task<any> {
 export function task<TResult, TReason = any>(
   runner: TaskRunner<TResult, TReason>
 ): Task<TResult, TReason> {
-  const eventSubscribers: TaskEventNotifications<TResult, TReason>[] = [];
-  const cancelCallbacks: { (): void }[] = [];
+  const eventSubscribers: Array<TaskEventNotifications<TResult, TReason>> = [];
+  const cancelCallbacks: Array<() => void> = [];
   const t: Task<TResult, TReason> = {
     isRunning: false,
     isFinished: false,
