@@ -64,7 +64,7 @@ export interface Task<TResult, TReason = any> {
     listen(events: TaskEventNotifications<TResult, TReason>): void;
     // (undocumented)
     result?: TResult;
-    // (undocumented)
+    // @internal (undocumented)
     run(events?: TaskEventNotifications<TResult, TReason>): void;
     // (undocumented)
     toPromise(): Promise<TResult>;

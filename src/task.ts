@@ -15,6 +15,9 @@ export interface Task<TResult, TReason = any> {
   isFinished: boolean;
   error?: TReason;
   result?: TResult;
+  /**
+   * @internal
+   */
   run(events?: TaskEventNotifications<TResult, TReason>): void;
   chain(lift: (value?: TResult) => Task<TResult>): Task<any>;
   cancel(): void;
@@ -121,9 +124,6 @@ export function task<TResult, TReason = any>(
         });
       });
     },
-    /**
-     * @internal
-     */
     run(events: TaskEventNotifications<TResult, TReason>) {
       if (events) {
         t.listen(events);

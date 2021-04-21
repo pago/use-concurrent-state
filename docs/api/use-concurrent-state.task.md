@@ -28,6 +28,5 @@ export interface Task<TResult, TReason = any>
 |  [cancel()](./use-concurrent-state.task.cancel.md) |  |
 |  [chain(lift)](./use-concurrent-state.task.chain.md) |  |
 |  [listen(events)](./use-concurrent-state.task.listen.md) |  |
-|  [run(events)](./use-concurrent-state.task.run.md) |  |
 |  [toPromise()](./use-concurrent-state.task.topromise.md) |  |
 
